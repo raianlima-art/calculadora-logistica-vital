@@ -15,27 +15,29 @@ with st.sidebar:
     
     # 1. Custos de Propriedade (IPVA, Seguro, Manut)
     with st.expander("💰 Custos Fixos (Anuais)", expanded=False):
-        ipva = st.number_input("IPVA Anual (R$)", value=3000.0)
-        seguro = st.number_input("Seguro Anual (R$)", value=6000.0)
-        manut_anual = st.number_input("Manutenção Fixa Anual (R$)", value=4000.0)
-        dias_uteis = st.number_input("Dias Úteis de Trabalho/Ano", value=250)
+        ipva = st.number_input("IPVA Anual (R$)", value=10000.0)
+        seguro = st.number_input("Seguro Anual (R$)", value=10000.0)
+        manut_anual = st.number_input("Manutenção Fixa Anual (R$)", value=10000.0)
+        dias_uteis = st.number_input("Dias Úteis/Ano", value=365)
         custo_fixo_diaria = (ipva + seguro + manut_anual) / dias_uteis
         st.write(f"**Custo Fixo/Dia:** R$ {custo_fixo_diaria:.2f}")
 
     # 2. Custos de Viagem (Hospedagem e Alimentação)
     with st.expander("🏨 Hospedagem e Refeição", expanded=True):
-        valor_alimentacao_dia = st.number_input("Alimentação por Dia (R$)", value=60.0)
-        valor_pernoite = st.number_input("Hospedagem/Pernoite (R$)", value=120.0)
-        total_viagem_dia = valor_alimentacao_dia + valor_pernoite
-        st.write(f"**Total Diário Extra:** R$ {total_viagem_dia:.2f}")
+        valor_alimentacao_dia = st.number_input("Alimentação/Dia (R$)", value=70.0)
+        valor_pernoite = st.number_input("Hospedagem (R$)", value=250.0)
 
-    # 3. Operação e Lucro
+    # 3. Operação e Lucro (AQUI ESTÃO OS NOVOS PADRÕES)
     with st.expander("⛽ Operação e Lucro", expanded=True):
         consumo = st.number_input("Consumo (km/L)", value=4.0)
         preco_diesel = st.number_input("Preço Diesel (R$)", value=8.00)
         diaria_motorista = st.number_input("Salário/Diária Motorista (R$)", value=200.0)
-        fator_estrada = st.slider("Ajuste de Curvas (%)", 10, 40, 20) / 100
-        margem = st.slider("Margem de Lucro (%)", 0, 100, 25)
+        
+        # AJUSTE: Curva em 25% por padrão
+        fator_estrada = st.slider("Ajuste de Curvas (%)", 10, 40, 25) / 100
+        
+        # AJUSTE: Lucro em 40% por padrão
+        margem = st.slider("Margem de Lucro (%)", 0, 100, 40)
 
 # --- CORPO PRINCIPAL ---
 st.subheader("📍 Planejamento da Rota")
@@ -58,26 +60,20 @@ if destino:
         loc2 = geolocator.geocode(destino)
 
         if loc1 and loc2:
-            # Cálculo de distância
             distancia_base = geodesic((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude)).km
             distancia_ajustada = distancia_base * (1 + fator_estrada)
             distancia_total = distancia_ajustada * 2 if tipo_trajeto == "Ida e Volta" else distancia_ajustada
 
-            # --- CÁLCULOS FINANCEIROS ---
             custo_combustivel = (distancia_total / consumo) * preco_diesel
-            
-            # Custos que dependem dos DIAS de viagem
             custo_estadia_total = (valor_alimentacao_dia + valor_pernoite) * qtd_dias_viagem
             custo_pessoal_total = diaria_motorista * qtd_dias_viagem
             custo_fixo_periodo = custo_fixo_diaria * qtd_dias_viagem
             
-            # Custo Total Somado
             custo_operacional = custo_combustivel + custo_estadia_total + custo_pessoal_total + custo_fixo_periodo
             preco_final = custo_operacional * (1 + margem/100)
 
-            # --- RESULTADOS ---
             st.divider()
-            st.subheader(f"Valor Sugerido: R$ {preco_final:.2f}")
+            st.success(f"### Valor Sugerido: R$ {preco_final:.2f}")
             
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("KM Total", f"{distancia_total:.0f} km")
@@ -86,14 +82,12 @@ if destino:
             c4.metric("Fixo/Pessoal", f"R$ {(custo_pessoal_total + custo_fixo_periodo):.2f}")
 
             with st.expander("📊 Detalhes do Orçamento"):
-                st.write(f"**Distância considerada:** {distancia_total:.2f} km")
-                st.write(f"**Dias de viagem:** {qtd_dias_viagem}")
+                st.write(f"**Trajeto:** {tipo_trajeto} | **Ajuste de Curva:** {fator_estrada*100:.0f}%")
+                st.write(f"**Margem de Lucro aplicada:** {margem}%")
                 st.write(f"---")
-                st.write(f"**Custo Alimentação/Hospedagem:** R$ {custo_estadia_total:.2f}")
-                st.write(f"**Custo Combustível:** R$ {custo_combustivel:.2f}")
-                st.write(f"**Custo Fixo + Motorista:** R$ {custo_pessoal_total + custo_fixo_periodo:.2f}")
-                st.write(f"**Margem de Lucro Bruto:** R$ {preco_final - custo_operacional:.2f}")
+                st.write(f"**Custo Total Operacional:** R$ {custo_operacional:.2f}")
+                st.write(f"**Lucro Bruto (Valor limpo):** R$ {preco_final - custo_operacional:.2f}")
         else:
             st.error("Cidade não encontrada.")
     except:
-        st.error("Erro ao consultar o mapa. Verifique a internet.")
+        st.error("Erro ao consultar o mapa.")
