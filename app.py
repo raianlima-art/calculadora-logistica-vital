@@ -8,6 +8,12 @@ st.set_page_config(
     page_icon="logo.png"
 )
 
+# Função para formatar números no padrão brasileiro (1.000,00)
+def formar_real(valor):
+    # Formata com milhar em vírgula e decimal em ponto, depois inverte
+    ajustado = "{:,.2f}".format(valor)
+    return ajustado.replace(",", "X").replace(".", ",").replace("X", ".")
+
 # Inicializar geolocalizador
 geolocator = Nominatim(user_agent="calculadora_frete_v3")
 
@@ -22,23 +28,19 @@ with st.sidebar:
         manut_anual = st.number_input("Manutenção Fixa Anual (R$)", value=10000.0)
         dias_uteis = st.number_input("Dias Úteis/Ano", value=365)
         custo_fixo_diaria = (ipva + seguro + manut_anual) / dias_uteis
-        st.write(f"**Custo Fixo/Dia:** R$ {custo_fixo_diaria:.2f}")
+        st.write(f"**Custo Fixo/Dia:** R$ {formar_real(custo_fixo_diaria)}")
 
     # 2. Custos de Viagem (Hospedagem e Alimentação)
     with st.expander("🏨 Hospedagem e Refeição", expanded=True):
         valor_alimentacao_dia = st.number_input("Alimentação/Dia (R$)", value=70.0)
         valor_pernoite = st.number_input("Hospedagem (R$)", value=250.0)
 
-    # 3. Operação e Lucro (AQUI ESTÃO OS NOVOS PADRÕES)
+    # 3. Operação e Lucro
     with st.expander("⛽ Operação e Lucro", expanded=True):
         consumo = st.number_input("Consumo (km/L)", value=4.0)
         preco_diesel = st.number_input("Preço Diesel (R$)", value=8.00)
         diaria_motorista = st.number_input("Salário/Diária Motorista (R$)", value=200.0)
-        
-        # AJUSTE: Curva em 25% por padrão
         fator_estrada = st.slider("Ajuste de Curvas (%)", 10, 40, 25) / 100
-        
-        # AJUSTE: Lucro em 40% por padrão
         margem = st.slider("Margem de Lucro (%)", 0, 100, 40)
 
 # --- CORPO PRINCIPAL ---
@@ -74,22 +76,50 @@ if destino:
             custo_operacional = custo_combustivel + custo_estadia_total + custo_pessoal_total + custo_fixo_periodo
             preco_final = custo_operacional * (1 + margem/100)
 
+            # --- RESULTADOS COM DESIGN PREMIUM E LIMPO ---
             st.divider()
-            st.success(f"### Valor Sugerido: R$ {preco_final:.2f}")
             
+            # Card de Destaque (Foco total no preço)
+            st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, #134E5E 0%, #71B280 100%);
+                    padding: 40px;
+                    border-radius: 20px;
+                    box-shadow: 0px 12px 25px rgba(0,0,0,0.15);
+                    text-align: center;
+                    margin-bottom: 35px;
+                    border: 1px solid rgba(255,255,255,0.1);
+                ">
+                    <h3 style="color: white; margin: 0; font-size: 1.1rem; opacity: 0.8; letter-spacing: 2px; font-weight: 400;">
+                        VALOR TOTAL SUGERIDO
+                    </h3>
+                    <h1 style="color: white; margin: 10px 0 0 0; font-size: 4rem; font-weight: 900; line-height: 1;">
+                        R$ {formar_real(preco_final)}
+                    </h1>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Métricas em colunas (Alinhadas e Escaneáveis)
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("KM Total", f"{distancia_total:.0f} km")
-            c2.metric("Diesel", f"R$ {custo_combustivel:.2f}")
-            c3.metric("Estadia", f"R$ {custo_estadia_total:.2f}")
-            c4.metric("Fixo/Pessoal", f"R$ {(custo_pessoal_total + custo_fixo_periodo):.2f}")
+            with c1:
+                st.markdown(f"<div style='text-align: center;'><strong>🛣️ KM Total</strong><br><span style='font-size: 1.4rem;'>{formar_real(distancia_total).split(',')[0]} km</span></div>", unsafe_allow_html=True)
+            with c2:
+                st.markdown(f"<div style='text-align: center;'><strong>⛽ Diesel</strong><br><span style='font-size: 1.4rem; color: #E74C3C;'>R$ {formar_real(custo_combustivel)}</span></div>", unsafe_allow_html=True)
+            with c3:
+                st.markdown(f"<div style='text-align: center;'><strong>🏨 Estadia</strong><br><span style='font-size: 1.4rem;'>R$ {formar_real(custo_estadia_total)}</span></div>", unsafe_allow_html=True)
+            with c4:
+                st.markdown(f"<div style='text-align: center;'><strong>🚚 Fixo/Pess.</strong><br><span style='font-size: 1.4rem;'>R$ {formar_real(custo_pessoal_total + custo_fixo_periodo)}</span></div>", unsafe_allow_html=True)
+
+            st.write(" ") 
 
             with st.expander("📊 Detalhes do Orçamento"):
-                st.write(f"**Trajeto:** {tipo_trajeto} | **Ajuste de Curva:** {fator_estrada*100:.0f}%")
-                st.write(f"**Margem de Lucro aplicada:** {margem}%")
-                st.write(f"---")
-                st.write(f"**Custo Total Operacional:** R$ {custo_operacional:.2f}")
-                st.write(f"**Lucro Bruto (Valor limpo):** R$ {preco_final - custo_operacional:.2f}")
+                st.write(f"**Trajeto:** {tipo_trajeto} | **Margem:** {margem}% | **Curvas:** {fator_estrada*100:.0f}%")
+                st.write(f"**Custo Total Operacional:** R$ {formar_real(custo_operacional)}")
+                st.write(f"**Lucro Bruto (Valor limpo):** R$ {formar_real(preco_final - custo_operacional)}")
+                st.write("---")
+                st.write(f"Origem: {loc1.address}")
+                st.write(f"Destino: {loc2.address}")
         else:
             st.error("Cidade não encontrada.")
-    except:
-        st.error("Erro ao consultar o mapa.")
+    except Exception as e:
+        st.error(f"Erro ao consultar o mapa: {e}")
