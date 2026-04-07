@@ -3,8 +3,9 @@ from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Logística Vital", page_icon="🚛")
-st.title("🚛 Calculadora Logística Vital")
+st.set_page_config(
+    page_title="Logística Vital", 
+    page_icon="logo.png"
 
 # Inicializar geolocalizador
 geolocator = Nominatim(user_agent="calculadora_frete_v3")
