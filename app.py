@@ -6,6 +6,7 @@ from geopy.distance import geodesic
 st.set_page_config(
     page_title="Logística Vital", 
     page_icon="logo.png"
+)
 
 # Inicializar geolocalizador
 geolocator = Nominatim(user_agent="calculadora_frete_v3")
