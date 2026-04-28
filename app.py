@@ -37,7 +37,7 @@ with st.sidebar:
 
     # 3. Operação e Lucro
     with st.expander("⛽ Operação e Lucro", expanded=True):
-        consumo = st.number_input("Consumo (km/L)", value=4.0)
+        consumo = st.number_input("Consumo (km/L)", value=8.0)
         preco_diesel = st.number_input("Preço Diesel (R$)", value=8.00)
         diaria_motorista = st.number_input("Salário/Diária Motorista (R$)", value=200.0)
         fator_estrada = st.slider("Ajuste de Curvas (%)", 10, 40, 25) / 100
