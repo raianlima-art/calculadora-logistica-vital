@@ -8,7 +8,6 @@ st.set_page_config(
     page_icon="logo.png"
 )
 
-# Função para formatar números no padrão brasileiro (1.000,00)
 def formar_real(valor):
     # Formata com milhar em vírgula e decimal em ponto, depois inverte
     ajustado = "{:,.2f}".format(valor)
@@ -76,10 +75,8 @@ if destino:
             custo_operacional = custo_combustivel + custo_estadia_total + custo_pessoal_total + custo_fixo_periodo
             preco_final = custo_operacional * (1 + margem/100)
 
-            # --- RESULTADOS COM DESIGN PREMIUM E LIMPO ---
             st.divider()
             
-            # Card de Destaque (Foco total no preço)
             st.markdown(f"""
                 <div style="
                     background: linear-gradient(135deg, #134E5E 0%, #71B280 100%);
@@ -99,7 +96,6 @@ if destino:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Métricas em colunas (Alinhadas e Escaneáveis)
             c1, c2, c3, c4 = st.columns(4)
             with c1:
                 st.markdown(f"<div style='text-align: center;'><strong>🛣️ KM Total</strong><br><span style='font-size: 1.4rem;'>{formar_real(distancia_total).split(',')[0]} km</span></div>", unsafe_allow_html=True)
