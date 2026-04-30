@@ -11,7 +11,7 @@ st.set_page_config(
 
 @st.cache_data(show_spinner="Consultando mapa...")
 def obter_localizacao(cidade):
-    geolocator = Nominatim(user_agent="vital_logistica_v15_final", timeout=10)
+    geolocator = Nominatim(user_agent="vital_logistica_v17_final", timeout=10)
     geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
     try:
         return geocode(cidade)
@@ -52,13 +52,12 @@ with col_t1:
     tipo_trajeto = st.radio("Modelo de Rota:", ("Apenas Ida", "Ida e Volta"), horizontal=True)
 
 with col_t2:
-    # Este número agora controla diretamente a quantidade de diárias de hotel
     dias_por_trecho = st.number_input("Dias por Trecho", min_value=1, value=1)
 
 with col_t3:
     st.write(" ") 
     st.write(" ") 
-    is_viagem_curta = st.checkbox("Viagem Curta", value=False, help="Zera apenas o valor do hotel")
+    is_viagem_curta = st.checkbox("Viagem Curta", value=False, help="Zera o valor do hotel")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -76,34 +75,36 @@ if destino:
             
             dist_direta = geodesic((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude)).km
             dist_total_km = dist_direta * (1 + fator_estrada) * multiplicador
-            
-            # Dias para cálculos que acompanham a rodagem total (Alimentação, Salário, Fixo)
-            dias_totais_trabalho = dias_por_trecho * multiplicador
+            dias_totais_operacao = dias_por_trecho * multiplicador
 
             # --- LÓGICA DE CÁLCULO ---
             custo_diesel = (dist_total_km / consumo) * preco_diesel
-            custo_alimentacao = valor_alimentacao_dia * dias_totais_trabalho
             
-            # CORREÇÃO AQUI: Hospedagem multiplicada APENAS pelo dia de trecho inserido
+            # Alimentação: fixa em 1 única cobrança
+            custo_alimentacao_total = valor_alimentacao_dia * 1
+            
+            # Hospedagem: Apenas dias de trecho (sem multiplicar)
             if is_viagem_curta:
                 custo_hospedagem_total = 0.0
             else:
                 custo_hospedagem_total = valor_pernoite * dias_por_trecho
 
-            custo_pessoal = diaria_motorista * dias_totais_trabalho
-            custo_fixo_veiculo = custo_fixo_diaria * dias_totais_trabalho
+            # Salário e Fixos: multiplicados pelo ciclo total
+            custo_pessoal = diaria_motorista * dias_totais_operacao
+            custo_fixo_veiculo = custo_fixo_diaria * dias_totais_operacao
             
-            custo_operacional_total = (custo_diesel + custo_alimentacao + custo_pessoal + 
+            custo_operacional_total = (custo_diesel + custo_alimentacao_total + custo_pessoal + 
                                        custo_fixo_veiculo + custo_hospedagem_total)
             
             preco_final = custo_operacional_total * (1 + margem/100)
 
             st.divider()
+            
+            # Card limpo (Sem a linha de descrição abaixo do valor)
             st.markdown(f"""
-                <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 35px; border-radius: 15px; text-align: center; color: white;">
-                    <p style="margin:0; font-size: 1.1rem; text-transform: uppercase;">Valor Total Sugerido</p>
-                    <h1 style="margin:10px 0; font-size: 3.8rem; font-weight: 800;">R$ {formar_real(preco_final)}</h1>
-                    <p style="margin:0; opacity: 0.8;">{tipo_trajeto} | Hotel cobrado por {dias_por_trecho} dia(s) | Alimentação por {dias_totais_trabalho} dias</p>
+                <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 45px; border-radius: 15px; text-align: center; color: white;">
+                    <p style="margin:0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">Valor Total Sugerido</p>
+                    <h1 style="margin:15px 0 0 0; font-size: 4rem; font-weight: 800;">R$ {formar_real(preco_final)}</h1>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -111,7 +112,7 @@ if destino:
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("🛣️ KM Total", f"{int(dist_total_km)} km")
             m2.metric("⛽ Diesel", f"R$ {formar_real(custo_diesel)}")
-            m3.metric("🏨 Hotel/Alim", f"R$ {formar_real(custo_hospedagem_total + custo_alimentacao)}")
+            m3.metric("🏨 Hotel/Alim", f"R$ {formar_real(custo_hospedagem_total + custo_alimentacao_total)}")
             m4.metric("🚛 Gastos Fixos", f"R$ {formar_real(custo_pessoal + custo_fixo_veiculo)}")
 
         except Exception as e:
