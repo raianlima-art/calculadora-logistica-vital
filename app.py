@@ -1,21 +1,22 @@
 import streamlit as st
-from geopy.geocoders import Nominatim
+from geopy.geocoders import Photon
 from geopy.distance import geodesic
-from geopy.extra.rate_limiter import RateLimiter
+import time
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Logística Vital", 
-    page_icon="logo.png" 
+    page_icon="🚚" 
 )
 
+# Função de geolocalização atualizada para usar Photon (mais estável para Streamlit)
 @st.cache_data(show_spinner="Consultando mapa...")
 def obter_localizacao(cidade):
-    geolocator = Nominatim(user_agent="vital_logistica_v17_final", timeout=10)
-    geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+    # O Photon costuma ser mais rápido e menos restrito que o Nominatim
+    geolocator = Photon(user_agent="vital_logistica_v18", timeout=10)
     try:
-        return geocode(cidade)
-    except:
+        return geolocator.geocode(cidade)
+    except Exception as e:
         return None
 
 def formar_real(valor):
@@ -65,12 +66,13 @@ with col1:
 with col2:
     destino = st.text_input("Destino", "Rio de Janeiro, RJ")
 
-if destino:
+if destino and origem:
     loc1 = obter_localizacao(origem)
     loc2 = obter_localizacao(destino)
 
     if loc1 and loc2:
         try:
+            # Lógica de multiplicador baseada no tipo de trajeto
             multiplicador = 2 if tipo_trajeto == "Apenas Ida" else 4
             
             dist_direta = geodesic((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude)).km
@@ -80,7 +82,7 @@ if destino:
             # --- LÓGICA DE CÁLCULO ---
             custo_diesel = (dist_total_km / consumo) * preco_diesel
             
-            # Alimentação: fixa em 1 única cobrança
+            # Alimentação: fixa em 1 única cobrança (ajuste conforme sua necessidade)
             custo_alimentacao_total = valor_alimentacao_dia * 1
             
             # Hospedagem: Apenas dias de trecho (sem multiplicar)
@@ -100,7 +102,7 @@ if destino:
 
             st.divider()
             
-            # Card limpo (Sem a linha de descrição abaixo do valor)
+            # Card de Resultado
             st.markdown(f"""
                 <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 45px; border-radius: 15px; text-align: center; color: white;">
                     <p style="margin:0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">Valor Total Sugerido</p>
@@ -118,4 +120,8 @@ if destino:
         except Exception as e:
             st.error(f"Erro no cálculo: {e}")
     else:
-        st.error("Erro na consulta do mapa.")
+        # Mensagens de erro mais amigáveis e específicas
+        if not loc1:
+            st.error(f"❌ Não conseguimos encontrar a Origem: '{origem}'. Verifique a grafia ou o estado.")
+        if not loc2:
+            st.error(f"❌ Não conseguimos encontrar o Destino: '{destino}'. Verifique a grafia ou o estado.")
