@@ -9,10 +9,9 @@ st.set_page_config(
     page_icon="🚚" 
 )
 
-# Função de geolocalização atualizada para usar Photon (mais estável para Streamlit)
+# Função de geolocalização mantida
 @st.cache_data(show_spinner="Consultando mapa...")
 def obter_localizacao(cidade):
-    # O Photon costuma ser mais rápido e menos restrito que o Nominatim
     geolocator = Photon(user_agent="vital_logistica_v18", timeout=10)
     try:
         return geolocator.geocode(cidade)
@@ -22,7 +21,7 @@ def obter_localizacao(cidade):
 def formar_real(valor):
     return "{:,.2f}".format(valor).replace(",", "X").replace(".", ",").replace("X", ".")
 
-# --- BARRA LATERAL ---
+# --- BARRA LATERAL (PARÂMETROS ORIGINAIS) ---
 with st.sidebar:
     st.header("⚙️ Configurações Fixas")
     
@@ -47,81 +46,82 @@ with st.sidebar:
 # --- CORPO PRINCIPAL ---
 st.title("🚚 Calculadora de Frete Vital")
 
-col_t1, col_t2, col_t3 = st.columns([2, 1, 1])
+# Formulário para disparar a busca apenas no clique do botão
+with st.form("form_rota"):
+    col_t1, col_t2, col_t3 = st.columns([2, 1, 1])
 
-with col_t1:
-    tipo_trajeto = st.radio("Modelo de Rota:", ("Apenas Ida", "Ida e Volta"), horizontal=True)
+    with col_t1:
+        tipo_trajeto = st.radio("Modelo de Rota:", ("Apenas Ida", "Ida e Volta"), horizontal=True)
 
-with col_t2:
-    dias_por_trecho = st.number_input("Dias por Trecho", min_value=1, value=1)
+    with col_t2:
+        dias_por_trecho = st.number_input("Dias por Trecho", min_value=1, value=1)
 
-with col_t3:
-    st.write(" ") 
-    st.write(" ") 
-    is_viagem_curta = st.checkbox("Viagem Curta", value=False, help="Zera o valor do hotel")
+    with col_t3:
+        st.write(" ") 
+        st.write(" ") 
+        is_viagem_curta = st.checkbox("Viagem Curta", value=False, help="Zera o valor do hotel")
 
-col1, col2 = st.columns(2)
-with col1:
-    origem = st.text_input("Origem", "São Paulo, SP")
-with col2:
-    destino = st.text_input("Destino", "Rio de Janeiro, RJ")
+    col1, col2 = st.columns(2)
+    with col1:
+        origem = st.text_input("Origem", "São Paulo, SP")
+    with col2:
+        destino = st.text_input("Destino", "Rio de Janeiro, RJ")
 
-if destino and origem:
-    loc1 = obter_localizacao(origem)
-    loc2 = obter_localizacao(destino)
+    btn_calcular = st.form_submit_button("🔍 Calcular Frete", use_container_width=True)
 
-    if loc1 and loc2:
-        try:
-            # Lógica de multiplicador baseada no tipo de trajeto
-            multiplicador = 2 if tipo_trajeto == "Apenas Ida" else 4
-            
-            dist_direta = geodesic((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude)).km
-            dist_total_km = dist_direta * (1 + fator_estrada) * multiplicador
-            dias_totais_operacao = dias_por_trecho * multiplicador
+if btn_calcular:
+    if destino and origem:
+        loc1 = obter_localizacao(origem)
+        loc2 = obter_localizacao(destino)
 
-            # --- LÓGICA DE CÁLCULO ---
-            custo_diesel = (dist_total_km / consumo) * preco_diesel
-            
-            # Alimentação: fixa em 1 única cobrança (ajuste conforme sua necessidade)
-            custo_alimentacao_total = valor_alimentacao_dia * 1
-            
-            # Hospedagem: Apenas dias de trecho (sem multiplicar)
-            if is_viagem_curta:
-                custo_hospedagem_total = 0.0
-            else:
-                custo_hospedagem_total = valor_pernoite * dias_por_trecho
+        if loc1 and loc2:
+            try:
+                # Lógica de multiplicador mantida intacta
+                multiplicador = 2 if tipo_trajeto == "Apenas Ida" else 4
+                
+                dist_direta = geodesic((loc1.latitude, loc1.longitude), (loc2.latitude, loc2.longitude)).km
+                dist_total_km = dist_direta * (1 + fator_estrada) * multiplicador
+                dias_totais_operacao = dias_por_trecho * multiplicador
 
-            # Salário e Fixos: multiplicados pelo ciclo total
-            custo_pessoal = diaria_motorista * dias_totais_operacao
-            custo_fixo_veiculo = custo_fixo_diaria * dias_totais_operacao
-            
-            custo_operacional_total = (custo_diesel + custo_alimentacao_total + custo_pessoal + 
-                                       custo_fixo_veiculo + custo_hospedagem_total)
-            
-            preco_final = custo_operacional_total * (1 + margem/100)
+                # --- LÓGICA DE CÁLCULO MANTIDA ---
+                custo_diesel = (dist_total_km / consumo) * preco_diesel
+                
+                custo_alimentacao_total = valor_alimentacao_dia * 1
+                
+                if is_viagem_curta:
+                    custo_hospedagem_total = 0.0
+                else:
+                    custo_hospedagem_total = valor_pernoite * dias_por_trecho
 
-            st.divider()
-            
-            # Card de Resultado
-            st.markdown(f"""
-                <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 45px; border-radius: 15px; text-align: center; color: white;">
-                    <p style="margin:0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">Valor Total Sugerido</p>
-                    <h1 style="margin:15px 0 0 0; font-size: 4rem; font-weight: 800;">R$ {formar_real(preco_final)}</h1>
-                </div>
-            """, unsafe_allow_html=True)
+                custo_pessoal = diaria_motorista * dias_totais_operacao
+                custo_fixo_veiculo = custo_fixo_diaria * dias_totais_operacao
+                
+                custo_operacional_total = (custo_diesel + custo_alimentacao_total + custo_pessoal + 
+                                           custo_fixo_veiculo + custo_hospedagem_total)
+                
+                preco_final = custo_operacional_total * (1 + margem/100)
 
-            st.write("")
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("🛣️ KM Total", f"{int(dist_total_km)} km")
-            m2.metric("⛽ Diesel", f"R$ {formar_real(custo_diesel)}")
-            m3.metric("🏨 Hotel/Alim", f"R$ {formar_real(custo_hospedagem_total + custo_alimentacao_total)}")
-            m4.metric("🚛 Gastos Fixos", f"R$ {formar_real(custo_pessoal + custo_fixo_veiculo)}")
+                st.divider()
+                
+                # Card de Resultado
+                st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 45px; border-radius: 15px; text-align: center; color: white;">
+                        <p style="margin:0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">Valor Total Sugerido</p>
+                        <h1 style="margin:15px 0 0 0; font-size: 4rem; font-weight: 800;">R$ {formar_real(preco_final)}</h1>
+                    </div>
+                """, unsafe_allow_html=True)
 
-        except Exception as e:
-            st.error(f"Erro no cálculo: {e}")
-    else:
-        # Mensagens de erro mais amigáveis e específicas
-        if not loc1:
-            st.error(f"❌ Não conseguimos encontrar a Origem: '{origem}'. Verifique a grafia ou o estado.")
-        if not loc2:
-            st.error(f"❌ Não conseguimos encontrar o Destino: '{destino}'. Verifique a grafia ou o estado.")
+                st.write("")
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("🛣️ KM Total", f"{int(dist_total_km)} km")
+                m2.metric("⛽ Diesel", f"R$ {formar_real(custo_diesel)}")
+                m3.metric("🏨 Hotel/Alim", f"R$ {formar_real(custo_hospedagem_total + custo_alimentacao_total)}")
+                m4.metric("🚛 Gastos Fixos", f"R$ {formar_real(custo_pessoal + custo_fixo_veiculo)}")
+
+            except Exception as e:
+                st.error(f"Erro no cálculo: {e}")
+        else:
+            if not loc1:
+                st.error(f"❌ Não conseguimos encontrar a Origem: '{origem}'. Verifique a grafia ou o estado.")
+            if not loc2:
+                st.error(f"❌ Não conseguimos encontrar o Destino: '{destino}'. Verifique a grafia ou o estado.")
