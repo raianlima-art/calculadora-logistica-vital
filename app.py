@@ -41,7 +41,7 @@ with st.sidebar:
         preco_diesel = st.number_input("Preço Diesel (R$)", value=8.00)
         diaria_motorista = st.number_input("Salário Motorista (R$)", value=200.0)
         fator_estrada = st.slider("Ajuste de Curvas (%)", 10, 40, 25) / 100
-        margem = st.slider("Margem de Lucro (%)", 0, 100, 20)
+        margem = st.slider("Margem de Lucro (%)", 0, 100, 70)
 
 # --- CORPO PRINCIPAL ---
 st.title("🚚 Calculadora de Frete Vital")
